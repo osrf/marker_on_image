@@ -1,0 +1,36 @@
+<?xml version="1.0"?>
+<package format="2">
+  <name>marker_on_image</name>
+  <version>0.0.1</version>
+  <description>Projects a 3D marker onto an image</description>
+  <maintainer email="louise@openrobotics.org">Louise Poubel</maintainer>
+
+  <license>Apache License 2.0</license>
+
+  <buildtool_depend>catkin</buildtool_depend>
+
+  <build_depend>cv_bridge</build_depend>
+  <build_depend>eigen_conversions</build_depend>
+  <build_depend>image_geometry</build_depend>
+  <build_depend>image_transport</build_depend>
+  <build_depend>roscpp</build_depend>
+  <build_depend>sensor_msgs</build_depend>
+  <build_depend>tf</build_depend>
+  <build_depend>tf_conversions</build_depend>
+  <build_depend>sensor_msgs</build_depend>
+  <build_depend>vision_msgs</build_depend>
+
+  <exec_depend>cv_bridge</exec_depend>
+  <exec_depend>eigen_conversions</exec_depend>
+  <exec_depend>image_geometry</exec_depend>
+  <exec_depend>image_transport</exec_depend>
+  <exec_depend>roscpp</exec_depend>
+  <exec_depend>sensor_msgs</exec_depend>
+  <exec_depend>tf</exec_depend>
+  <exec_depend>tf_conversions</exec_depend>
+  <exec_depend>sensor_msgs</exec_depend>
+  <exec_depend>vision_msgs</exec_depend>
+
+  <export>
+  </export>
+</package>
