@@ -10,8 +10,8 @@ find_package(catkin REQUIRED COMPONENTS
   image_transport
   roscpp
   sensor_msgs
-  tf
-  tf_conversions
+  tf2_eigen
+  tf2_ros
   vision_msgs
 )
 
@@ -22,8 +22,8 @@ catkin_package(
   image_transport
   roscpp
   sensor_msgs
-  tf
-  tf_conversions
+  tf2_eigen
+  tf2_ros
   vision_msgs
 )
 

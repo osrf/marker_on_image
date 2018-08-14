@@ -15,8 +15,8 @@
   <build_depend>image_transport</build_depend>
   <build_depend>roscpp</build_depend>
   <build_depend>sensor_msgs</build_depend>
-  <build_depend>tf</build_depend>
-  <build_depend>tf_conversions</build_depend>
+  <build_depend>tf2_eigen</build_depend>
+  <build_depend>tf2_ros</build_depend>
   <build_depend>sensor_msgs</build_depend>
   <build_depend>vision_msgs</build_depend>
 
@@ -26,8 +26,8 @@
   <exec_depend>image_transport</exec_depend>
   <exec_depend>roscpp</exec_depend>
   <exec_depend>sensor_msgs</exec_depend>
-  <exec_depend>tf</exec_depend>
-  <exec_depend>tf_conversions</exec_depend>
+  <exec_depend>tf2_eigen</exec_depend>
+  <exec_depend>tf2_ros</exec_depend>
   <exec_depend>sensor_msgs</exec_depend>
   <exec_depend>vision_msgs</exec_depend>
 

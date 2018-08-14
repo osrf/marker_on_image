@@ -4,8 +4,8 @@
 #include <image_transport/image_transport.h>
 #include <ros/ros.h>
 #include <sensor_msgs/image_encodings.h>
-#include <tf/transform_listener.h>
-#include <tf_conversions/tf_eigen.h>
+#include <tf2_eigen/tf2_eigen.h>
+#include <tf2_ros/transform_listener.h>
 #include <visualization_msgs/MarkerArray.h>
 
 /// Holds information necessary to print a marker on an image
@@ -24,18 +24,35 @@ class MarkerOnImage
 public:
 
   /// Constructor
-  MarkerOnImage() : it_(nh_)
+  MarkerOnImage() : nh_("~"), it_(nh_), tf_listener_(tf_buffer_)
   {
     // Subscribe to images
-    image_sub_ = it_.subscribeCamera("/camera/rgb/image_raw", 1,
+    std::string in_image_topic;
+    nh_.param<std::string>("in_image_topic", in_image_topic,
+        "camera/rgb/image_raw");
+
+    image_sub_ = it_.subscribeCamera(in_image_topic, 1,
       &MarkerOnImage::onImage, this);
 
     // Subscribe to markers
-    marker_sub_ = nh_.subscribe("/einstein/safe_mobility_cart", 1,
+    std::string in_marker_topic;
+    nh_.param<std::string>("in_marker_topic", in_marker_topic, "markers");
+
+    marker_sub_ = nh_.subscribe(in_marker_topic, 1,
       &MarkerOnImage::onMarker, this);
 
     // Publish images with overlayes markers
-    overlay_pub_ = it_.advertise("/camera/rgb/image_markers", 1);
+    std::string out_image_topic;
+    nh_.param<std::string>("out_image_topic", out_image_topic,
+        "camera/rgb/image_markers");
+
+    overlay_pub_ = it_.advertise(out_image_topic, 1);
+
+    ROS_INFO("marker_on_image node combining images from [%s] and markers"
+        " from [%s] into images on [%s]",
+        in_image_topic.c_str(),
+        in_marker_topic.c_str(),
+        out_image_topic.c_str());
   }
 
   /// Destructor
@@ -91,47 +108,36 @@ private:
       // Get marker frame with respect to camera
       auto frame_id = it->msg.header.frame_id;
 
-      tf::StampedTransform cam_to_frame_tf;
+      geometry_msgs::TransformStamped cam_to_frame_msg;
       try
       {
         ros::Duration timeout(1.0 / 30);
-        tf_listener_.waitForTransform(cam_model_.tfFrame(), frame_id,
-                                      current_time, timeout);
-        tf_listener_.lookupTransform(cam_model_.tfFrame(), frame_id,
-                                     current_time, cam_to_frame_tf);
+        cam_to_frame_msg = tf_buffer_.lookupTransform(cam_model_.tfFrame(),
+            frame_id, ros::Time(0));
       }
-      catch (tf::TransformException & ex)
+      catch (tf2::TransformException & ex)
       {
         ROS_WARN("TF exception:\n%s", ex.what());
-        return;
+        markers_.erase(it++);
+        continue;
       }
 
-      Eigen::Affine3d cam_to_frame_eigen;
-      tf::transformTFToEigen(cam_to_frame_tf, cam_to_frame_eigen);
+      auto cam_to_frame_eigen = tf2::transformToEigen(cam_to_frame_msg);
 
       // Marker offset
       auto frame_to_marker = it->msg.pose;
 
       Eigen::Affine3d frame_to_marker_eigen;
-      tf::poseMsgToEigen(frame_to_marker, frame_to_marker_eigen);
+      tf2::fromMsg(frame_to_marker, frame_to_marker_eigen);
 
-      // DEBUG: skip spheres too close to odom frame
-//      auto x = frame_to_marker.position.x;
-//      auto y = frame_to_marker.position.y;
-//      if (x*x + y*y < 0.5)
-//      {
-//        ++it;
-//        continue;
-//      }
-//
-//      // DEBUG: skip spheres behind odom frame
-//      if (x < 0 && y < 0)
-//      {
-//        ++it;
-//        continue;
-//      }
+      auto cam_to_marker_eigen = cam_to_frame_eigen * frame_to_marker_eigen;
 
-      Eigen::Affine3d cam_to_marker_eigen = cam_to_frame_eigen * frame_to_marker_eigen;
+      // Skip if behind camera
+      if (cam_to_marker_eigen.translation().z() <= 0)
+      {
+        markers_.erase(it++);
+        continue;
+      }
 
       // Transform to image
       cv::Point3d pos_3d(cam_to_marker_eigen.translation().x(),
@@ -144,7 +150,8 @@ private:
       switch (it->msg.type)
       {
         case visualization_msgs::Marker::SPHERE:
-          drawSphere(cv_ptr, it->msg, pos_2d);
+          drawSphere(cv_ptr, it->msg, pos_2d,
+              cam_to_marker_eigen.translation().z());
           break;
 
         default:
@@ -225,13 +232,41 @@ private:
   /// \param[in] image OpenCV image pointer
   /// \param[in] marker Message describing marker
   /// \param[in] pos 2D position of marker on image
-  void drawSphere(const cv_bridge::CvImagePtr image, visualization_msgs::Marker marker,
-      cv::Point2d pos)
+  /// \param[in] dist Marker distance to camera on Z axis
+  void drawSphere(const cv_bridge::CvImagePtr image,
+      const visualization_msgs::Marker marker,
+      const cv::Point2d pos, const double dist)
   {
+    if (dist <= 0)
+      return;
+
+    // 3D radius
+    if (marker.scale.x != marker.scale.y ||
+        marker.scale.x != marker.scale.z)
+    {
+      ROS_WARN("Sphere marker unevenly scaled, taking X: %f\n",
+          marker.scale.x);
+    }
+    auto radius_3d = marker.scale.x * 0.5;
+
+
+    // Camera focal lengths
+    if (cam_model_.fx() != cam_model_.fy())
+    {
+      ROS_WARN("Camera has different focal lengths, taking Fx: %f\n",
+          cam_model_.fx());
+    }
+    auto fx = cam_model_.fx();
+
+    // Radius in px
+    double radius = radius_3d * fx / dist;
+
+    // Color from msg
+    auto color = CV_RGB(marker.color.r*255,
+                        marker.color.g*255,
+                        marker.color.b*255);
+
     // Draw circle onto image
-    // TODO(chapulina): scale according to distance
-    double radius = 10;
-    auto color = CV_RGB(marker.color.r*255, marker.color.g*255, marker.color.b*255);
     cv::circle(image->image, pos, radius, color, -1);
   }
 
@@ -259,8 +294,11 @@ private:
   /// Camera model
   image_geometry::PinholeCameraModel cam_model_;
 
+  /// TF buffer
+  tf2_ros::Buffer tf_buffer_;
+
   /// Listen to TF transforms (for camera transform)
-  tf::TransformListener tf_listener_;
+  tf2_ros::TransformListener tf_listener_;
 };
 
 int main(int argc, char** argv) {
