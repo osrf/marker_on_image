@@ -2,7 +2,7 @@
 <package format="2">
   <name>marker_on_image</name>
   <version>0.0.1</version>
-  <description>Projects a 3D marker onto an image</description>
+  <description>Projects a 3D marker onto a camera image</description>
   <maintainer email="louise@openrobotics.org">Louise Poubel</maintainer>
 
   <license>Apache License 2.0</license>
