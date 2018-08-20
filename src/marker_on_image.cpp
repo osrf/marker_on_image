@@ -1,3 +1,20 @@
+/*
+ * Copyright (C) 2018 Open Source Robotics Foundation
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ *
+ */
+
 #include <cv_bridge/cv_bridge.h>
 #include <eigen_conversions/eigen_msg.h>
 #include <image_geometry/pinhole_camera_model.h>
@@ -18,8 +35,8 @@ struct MarkerInfo
   ros::Time expiration;
 };
 
-/// Holds information about a corner of a cube marker.
-struct CubeCorner
+/// Holds a 3D pose and its 2D projection.
+struct PoseProjection
 {
   /// 3D pose
   Eigen::Affine3d pos_3d;
@@ -74,7 +91,7 @@ private:
 
   /// Callback when an image is received
   /// \param[in] msg New image message
-  /// \param[in] msg Camera info message
+  /// \param[in] cam_msg Camera info message
   void onImage(const sensor_msgs::ImageConstPtr & msg,
                const sensor_msgs::CameraInfoConstPtr & cam_msg)
   {
@@ -319,14 +336,14 @@ private:
     auto furthest_corner = center;
 
     // 6 faces, each defined by 4 points
-    std::map<std::string, std::vector<CubeCorner>> faces;
+    std::map<std::string, std::vector<PoseProjection>> faces;
     for (auto x : {-sX, sX})
     {
       for (auto y : {-sY, sY})
       {
         for (auto z : {-sZ, sZ})
         {
-          CubeCorner corner;
+          PoseProjection corner;
 
           // 3D
           Eigen::Affine3d offset;
