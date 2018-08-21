@@ -15,6 +15,9 @@
  *
  */
 
+#include <unordered_set>
+#include <vector>
+
 #include <cv_bridge/cv_bridge.h>
 #include <eigen_conversions/eigen_msg.h>
 #include <image_geometry/pinhole_camera_model.h>
@@ -104,6 +107,15 @@ private:
     // Get camera model
     cam_model_.fromCameraInfo(cam_msg);
 
+    for (auto d : cam_msg->D)
+    {
+      if (d != 0)
+      {
+        ROS_WARN_ONCE("Camera distortion will not affect markers.");
+        break;
+      }
+    }
+
     // Current image time
     auto current_time = msg->header.stamp;
 
@@ -126,8 +138,7 @@ private:
       }
 
       // Remove if not supported
-      if (std::find(supported_types_.begin(), supported_types_.end(), it->msg.type) ==
-          supported_types_.end())
+      if (supported_types_.find(it->msg.type) == supported_types_.end())
       {
         ROS_WARN("Marker type not supported: %i\n", it->msg.type);
         markers_.erase(it++);
@@ -587,10 +598,10 @@ private:
   tf2_ros::TransformListener tf_listener_;
 
   /// Supported types
-  const std::vector<uint8_t> supported_types_{visualization_msgs::Marker::CUBE,
-                                              visualization_msgs::Marker::SPHERE,
-                                              visualization_msgs::Marker::LINE_LIST,
-                                              visualization_msgs::Marker::LINE_STRIP};
+  const std::unordered_set<uint8_t> supported_types_{visualization_msgs::Marker::CUBE,
+                                                     visualization_msgs::Marker::SPHERE,
+                                                     visualization_msgs::Marker::LINE_LIST,
+                                                     visualization_msgs::Marker::LINE_STRIP};
 };
 
 int main(int argc, char** argv) {
