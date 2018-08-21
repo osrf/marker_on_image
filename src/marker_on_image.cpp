@@ -279,7 +279,7 @@ private:
     // Camera focal lengths
     if (cam_model_.fx() != cam_model_.fy())
     {
-      ROS_WARN("Camera has different focal lengths, taking Fx: %f\n",
+      ROS_WARN_ONCE("Camera has different focal lengths, taking Fx: %f\n",
           cam_model_.fx());
     }
     auto fx = cam_model_.fx();
