@@ -6,8 +6,20 @@ Run:
 
     rosrun marker_on_image marker_on_image_node _in_marker_topic:="/some_markers" _in_image_topic:="/some/camera" _out_image_topic:="/some_image"
 
-TODO:
+## Supported
 
-* Support `LINE_STRIP` and `LINE_LIST`
+Types:
+
+* `CUBE`
+* `SPHERE`
+* `LINE_STRIP`
+* `LINE_LIST`
+
+Actions:
+
+* `ADD`
+
+## TODO
+
 * Support deletion
 * (Publish transparent image with only the overlays)

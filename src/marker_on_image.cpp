@@ -15,6 +15,9 @@
  *
  */
 
+#include <unordered_set>
+#include <vector>
+
 #include <cv_bridge/cv_bridge.h>
 #include <eigen_conversions/eigen_msg.h>
 #include <image_geometry/pinhole_camera_model.h>
@@ -104,6 +107,15 @@ private:
     // Get camera model
     cam_model_.fromCameraInfo(cam_msg);
 
+    for (auto d : cam_msg->D)
+    {
+      if (d != 0)
+      {
+        ROS_WARN_ONCE("Camera distortion will not affect markers.");
+        break;
+      }
+    }
+
     // Current image time
     auto current_time = msg->header.stamp;
 
@@ -126,8 +138,7 @@ private:
       }
 
       // Remove if not supported
-      if (it->msg.type != visualization_msgs::Marker::SPHERE &&
-          it->msg.type != visualization_msgs::Marker::CUBE)
+      if (supported_types_.find(it->msg.type) == supported_types_.end())
       {
         ROS_WARN("Marker type not supported: %i\n", it->msg.type);
         markers_.erase(it++);
@@ -170,6 +181,11 @@ private:
 
         case visualization_msgs::Marker::CUBE:
           drawCube(cv_ptr, it->msg, cam_to_marker_eigen);
+          break;
+
+        case visualization_msgs::Marker::LINE_STRIP:
+        case visualization_msgs::Marker::LINE_LIST:
+          drawLine(cv_ptr, it->msg, cam_to_marker_eigen);
           break;
 
         default:
@@ -288,9 +304,7 @@ private:
     double radius = radius_3d * fx / pos_3d.z;
 
     // Color from msg
-    auto color = CV_RGB(marker.color.r*255,
-                        marker.color.g*255,
-                        marker.color.b*255);
+    auto color = this->getColor(marker);
 
     // Draw circle onto image
     cv::circle(image->image, pos_2d, radius, color, -1);
@@ -478,6 +492,81 @@ private:
 //    }
   }
 
+  /// Draw a line marker onto an image
+  /// \param[in] image OpenCV image pointer
+  /// \param[in] marker Message describing marker
+  /// \param[in] center 3D transform from camera to marker's origin
+  void drawLine(const cv_bridge::CvImagePtr image,
+      const visualization_msgs::Marker marker,
+      const Eigen::Affine3d center)
+  {
+    // Skip if behind camera
+    if (center.translation().z() <= 0)
+    {
+      return;
+    }
+
+    // Line width is given by X scale
+    auto width_3d = marker.scale.x;
+
+    // Camera focal lengths
+    if (cam_model_.fx() != cam_model_.fy())
+    {
+      ROS_WARN("Camera has different focal lengths, taking Fx: %f\n",
+          cam_model_.fx());
+    }
+    auto fx = cam_model_.fx();
+
+    auto width_2d = width_3d * fx / center.translation().z();
+
+    // Color from msg
+    auto color = this->getColor(marker);
+
+    // Project each point onto the image
+    cv::Point prev_pt;
+    unsigned int count{0};
+    for (auto pt : marker.points)
+    {
+      // Add 3D offset
+      Eigen::Affine3d offset;
+      offset.translation().x() = pt.x;
+      offset.translation().y() = pt.y;
+      offset.translation().z() = pt.z;
+
+      auto pos_3d_eigen = center * offset;
+
+      // 2D
+      cv::Point3d pos_3d(pos_3d_eigen.translation().x(),
+                         pos_3d_eigen.translation().y(),
+                         pos_3d_eigen.translation().z());
+
+      auto pos_2d = cam_model_.project3dToPixel(pos_3d);
+
+      // Skip first point
+      // Draw all segments for line strip
+      // Draw every second segment for line list
+      if (count != 0 &&
+          (marker.type == visualization_msgs::Marker::LINE_STRIP ||
+          count % 2 == 1))
+      {
+        cv::line(image->image, prev_pt, pos_2d, color, width_2d, CV_AA);
+      }
+
+      count++;
+      prev_pt = pos_2d;
+    }
+  }
+
+  /// Get color from marker msg
+  /// \param[in] marker Marker msg
+  /// \return Color
+  cv::Scalar getColor(const visualization_msgs::Marker marker)
+  {
+    return CV_RGB(marker.color.r * 255,
+                  marker.color.g * 255,
+                  marker.color.b * 255);
+  }
+
   /// ROS Node handle
   ros::NodeHandle nh_;
 
@@ -507,6 +596,12 @@ private:
 
   /// Listen to TF transforms (for camera transform)
   tf2_ros::TransformListener tf_listener_;
+
+  /// Supported types
+  const std::unordered_set<uint8_t> supported_types_{visualization_msgs::Marker::CUBE,
+                                                     visualization_msgs::Marker::SPHERE,
+                                                     visualization_msgs::Marker::LINE_LIST,
+                                                     visualization_msgs::Marker::LINE_STRIP};
 };
 
 int main(int argc, char** argv) {
