@@ -19,7 +19,6 @@
 #include <vector>
 
 #include <cv_bridge/cv_bridge.h>
-#include <eigen_conversions/eigen_msg.h>
 #include <image_geometry/pinhole_camera_model.h>
 #include <image_transport/image_transport.h>
 #include <ros/ros.h>
