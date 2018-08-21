@@ -126,10 +126,8 @@ private:
       }
 
       // Remove if not supported
-      if (it->msg.type != visualization_msgs::Marker::SPHERE &&
-          it->msg.type != visualization_msgs::Marker::CUBE &&
-          it->msg.type != visualization_msgs::Marker::LINE_STRIP &&
-          it->msg.type != visualization_msgs::Marker::LINE_LIST)
+      if (std::find(supported_types_.begin(), supported_types_.end(), it->msg.type) ==
+          supported_types_.end())
       {
         ROS_WARN("Marker type not supported: %i\n", it->msg.type);
         markers_.erase(it++);
@@ -587,6 +585,12 @@ private:
 
   /// Listen to TF transforms (for camera transform)
   tf2_ros::TransformListener tf_listener_;
+
+  /// Supported types
+  const std::vector<uint8_t> supported_types_{visualization_msgs::Marker::CUBE,
+                                              visualization_msgs::Marker::SPHERE,
+                                              visualization_msgs::Marker::LINE_LIST,
+                                              visualization_msgs::Marker::LINE_STRIP};
 };
 
 int main(int argc, char** argv) {
