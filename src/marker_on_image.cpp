@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2018 Open Source Robotics Foundation
+ * Copyright (c) 2018 Open Source Robotics Foundation, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -12,7 +12,6 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
- *
  */
 
 #include <cv_bridge/cv_bridge.h>
@@ -24,6 +23,10 @@
 #include <tf2_eigen/tf2_eigen.h>
 #include <tf2_ros/transform_listener.h>
 #include <visualization_msgs/MarkerArray.h>
+
+#include <map>
+#include <string>
+#include <vector>
 
 /// Holds information necessary to print a marker on an image
 struct MarkerInfo
@@ -49,14 +52,13 @@ struct PoseProjection
 class MarkerOnImage
 {
 public:
-
   /// Constructor
   MarkerOnImage() : nh_("~"), it_(nh_), tf_listener_(tf_buffer_)
   {
     // Subscribe to images
     std::string in_image_topic;
-    nh_.param<std::string>("in_image_topic", in_image_topic,
-        "camera/rgb/image_raw");
+    nh_.param<std::string>("in_image_topic",
+      in_image_topic, "camera/rgb/image_raw");
 
     image_sub_ = it_.subscribeCamera(in_image_topic, 1,
       &MarkerOnImage::onImage, this);
@@ -65,21 +67,22 @@ public:
     std::string in_marker_topic;
     nh_.param<std::string>("in_marker_topic", in_marker_topic, "markers");
 
-    marker_sub_ = nh_.subscribe(in_marker_topic, 1,
-      &MarkerOnImage::onMarker, this);
+    marker_sub_ = nh_.subscribe(in_marker_topic,
+      1, &MarkerOnImage::onMarker, this);
 
     // Publish images with overlayed markers
     std::string out_image_topic;
-    nh_.param<std::string>("out_image_topic", out_image_topic,
-        "camera/rgb/image_markers");
+    nh_.param<std::string>("out_image_topic",
+      out_image_topic, "camera/rgb/image_markers");
 
     overlay_pub_ = it_.advertise(out_image_topic, 1);
 
-    ROS_INFO("marker_on_image node combining images from [%s] and markers"
-        " from [%s] into images on [%s]",
-        in_image_topic.c_str(),
-        in_marker_topic.c_str(),
-        out_image_topic.c_str());
+    ROS_INFO(
+      "marker_on_image node combining images from [%s] and markers"
+      " from [%s] into images on [%s]",
+      in_image_topic.c_str(),
+      in_marker_topic.c_str(),
+      out_image_topic.c_str());
   }
 
   /// Destructor
@@ -88,12 +91,12 @@ public:
   }
 
 private:
-
   /// Callback when an image is received
   /// \param[in] msg New image message
   /// \param[in] cam_msg Camera info message
-  void onImage(const sensor_msgs::ImageConstPtr & msg,
-               const sensor_msgs::CameraInfoConstPtr & cam_msg)
+  void onImage(
+    const sensor_msgs::ImageConstPtr & msg,
+    const sensor_msgs::CameraInfoConstPtr & cam_msg)
   {
     // Process latest marker messages
     processPendingMarkers();
@@ -142,7 +145,7 @@ private:
       {
         ros::Duration timeout(1.0 / 30);
         cam_to_frame_msg = tf_buffer_.lookupTransform(cam_model_.tfFrame(),
-            frame_id, ros::Time(0));
+          frame_id, ros::Time(0));
       }
       catch (tf2::TransformException & ex)
       {
@@ -189,7 +192,7 @@ private:
   {
     // Append to pending markers
     pending_markers_.markers.insert(pending_markers_.markers.end(),
-        msg->markers.begin(), msg->markers.end());
+      msg->markers.begin(), msg->markers.end());
   }
 
   /// Process all pending marker messages
@@ -261,9 +264,10 @@ private:
     }
 
     // Transform sphere's center point to image
-    cv::Point3d pos_3d(center.translation().x(),
-                       center.translation().y(),
-                       center.translation().z());
+    cv::Point3d pos_3d(
+      center.translation().x(),
+      center.translation().y(),
+      center.translation().z());
 
     auto pos_2d = cam_model_.project3dToPixel(pos_3d);
 
@@ -314,18 +318,21 @@ private:
     // \todo(louise) choose colors in a smarter way, could use BFLRDU for that
     // Also figure out how to add transparency
     std::vector<cv::Scalar> colors;
-    colors.push_back(cv::Scalar(marker.color.b*255,
-                                marker.color.g*255,
-                                marker.color.r*255,
-                                150));
-    colors.push_back(cv::Scalar(marker.color.b*255 + 50,
-                                marker.color.g*255 + 50,
-                                marker.color.r*255 + 50,
-                                150));
-    colors.push_back(cv::Scalar(marker.color.b*255 - 50,
-                                marker.color.g*255 - 50,
-                                marker.color.r*255 - 50,
-                                150));
+    colors.push_back(cv::Scalar(
+      marker.color.b*255,
+      marker.color.g*255,
+      marker.color.r*255,
+      150));
+    colors.push_back(cv::Scalar(
+      marker.color.b*255 + 50,
+      marker.color.g*255 + 50,
+      marker.color.r*255 + 50,
+      150));
+    colors.push_back(cv::Scalar(
+      marker.color.b*255 - 50,
+      marker.color.g*255 - 50,
+      marker.color.r*255 - 50,
+      150));
 
     // Corner distances from center
     auto sX = marker.scale.x * 0.5;
@@ -355,7 +362,9 @@ private:
 
           // Keep the furthest corner
           if (corner.pos_3d.translation().z() > furthest_corner.translation().z())
+          {
             furthest_corner = corner.pos_3d;
+          }
 
           if (corner.pos_3d.translation().z() < 0)
           {
@@ -364,30 +373,43 @@ private:
           }
 
           // 2D
-          cv::Point3d pos_3d(corner.pos_3d.translation().x(),
-                             corner.pos_3d.translation().y(),
-                             corner.pos_3d.translation().z());
+          cv::Point3d pos_3d(
+            corner.pos_3d.translation().x(),
+            corner.pos_3d.translation().y(),
+            corner.pos_3d.translation().z());
 
           corner.pos_2d = cam_model_.project3dToPixel(pos_3d);
 
           // Add to faces
           if (x == -sX)
+          {
             faces["B"].push_back(corner);
+          }
 
           if (x == sX)
+          {
             faces["F"].push_back(corner);
+          }
 
           if (y == -sY)
+          {
             faces["L"].push_back(corner);
+          }
 
           if (y == sY)
+          {
             faces["R"].push_back(corner);
+          }
 
           if (z == -sZ)
+          {
             faces["D"].push_back(corner);
+          }
 
           if (z == sZ)
+          {
             faces["U"].push_back(corner);
+          }
 
           faces["debug"].push_back(corner);
         }
@@ -423,7 +445,9 @@ private:
         }
       }
       if (!erased)
+      {
         ++face;
+      }
     }
 
     // Sanity check: there should be only 3 faces + debug left
@@ -449,7 +473,9 @@ private:
       std::sort(pts, pts + 4, [](const cv::Point & lhs, const cv::Point & rhs)
       {
          if (lhs.y < rhs.y)
+         {
            return true;
+         }
 
          return lhs.x < rhs.x;
       });
@@ -515,4 +541,3 @@ int main(int argc, char** argv) {
   ros::spin();
   return 0;
 }
-
