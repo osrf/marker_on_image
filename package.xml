@@ -10,26 +10,20 @@
   <buildtool_depend>catkin</buildtool_depend>
 
   <build_depend>cv_bridge</build_depend>
-  <build_depend>eigen_conversions</build_depend>
   <build_depend>image_geometry</build_depend>
   <build_depend>image_transport</build_depend>
   <build_depend>roscpp</build_depend>
   <build_depend>sensor_msgs</build_depend>
   <build_depend>tf2_eigen</build_depend>
   <build_depend>tf2_ros</build_depend>
-  <build_depend>sensor_msgs</build_depend>
-  <build_depend>vision_msgs</build_depend>
 
   <exec_depend>cv_bridge</exec_depend>
-  <exec_depend>eigen_conversions</exec_depend>
   <exec_depend>image_geometry</exec_depend>
   <exec_depend>image_transport</exec_depend>
   <exec_depend>roscpp</exec_depend>
   <exec_depend>sensor_msgs</exec_depend>
   <exec_depend>tf2_eigen</exec_depend>
   <exec_depend>tf2_ros</exec_depend>
-  <exec_depend>sensor_msgs</exec_depend>
-  <exec_depend>vision_msgs</exec_depend>
 
   <export>
   </export>
