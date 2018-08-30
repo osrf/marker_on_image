@@ -55,6 +55,9 @@ public:
   /// Constructor
   MarkerOnImage() : nh_("~"), it_(nh_), tf_listener_(tf_buffer_)
   {
+    // Transparency for all markers
+    nh_.param<double>("alpha", alpha_, -1.0);
+
     // Subscribe to images
     std::string in_image_topic;
     nh_.param<std::string>("in_image_topic", in_image_topic,
@@ -305,8 +308,16 @@ private:
     // Color from msg
     auto color = this->getColor(marker);
 
-    // Draw circle onto image
-    cv::circle(image->image, pos_2d, radius, color, -1);
+    // If alpha is set, use it, otherwise use alpha from marker.
+    double alpha = alpha_ < 0 ? color[3] : alpha_;
+
+    // Draw circle onto an overlay
+    cv::Mat overlay;
+    image->image.copyTo(overlay);
+    cv::circle(overlay, pos_2d, radius, color, -1);
+
+    // Blend overlay onto image
+    cv::addWeighted(overlay, alpha, image->image, 1 - alpha, 0, image->image);
   }
 
   /// Draw a cube marker onto an image
@@ -325,20 +336,19 @@ private:
 
     // Color from msg
     // \todo(louise) choose colors in a smarter way, could use BFLRDU for that
-    // Also figure out how to add transparency
     std::vector<cv::Scalar> colors;
     colors.push_back(cv::Scalar(marker.color.b*255,
                                 marker.color.g*255,
-                                marker.color.r*255,
-                                150));
+                                marker.color.r*255));
     colors.push_back(cv::Scalar(marker.color.b*255 + 50,
                                 marker.color.g*255 + 50,
-                                marker.color.r*255 + 50,
-                                150));
+                                marker.color.r*255 + 50));
     colors.push_back(cv::Scalar(marker.color.b*255 - 50,
                                 marker.color.g*255 - 50,
-                                marker.color.r*255 - 50,
-                                150));
+                                marker.color.r*255 - 50));
+
+    // If alpha is set, use it, otherwise use alpha from marker.
+    double alpha = alpha_ < 0 ? marker.color.a : alpha_;
 
     // Corner distances from center
     auto sX = marker.scale.x * 0.5;
@@ -470,8 +480,13 @@ private:
       // Swap last 2 points
       std::swap(pts[2], pts[3]);
 
-      // Draw polygon
-      cv::fillConvexPoly(image->image, pts, 4, colors[count++]);
+      // Draw polygon on an overlay
+      cv::Mat overlay;
+      image->image.copyTo(overlay);
+      cv::fillConvexPoly(overlay, pts, 4, colors[count++]);
+
+      // Blend overlay onto image
+      cv::addWeighted(overlay, alpha, image->image, 1 - alpha, 0, image->image);
     }
 
     // Debug: print all corners and furthest corner in yellow
@@ -521,6 +536,9 @@ private:
     // Color from msg
     auto color = this->getColor(marker);
 
+    // If alpha is set, use it, otherwise use alpha from marker.
+    double alpha = alpha_ < 0 ? color[3] : alpha_;
+
     // Project each point onto the image
     cv::Point prev_pt;
     unsigned int count{0};
@@ -548,7 +566,13 @@ private:
           (marker.type == visualization_msgs::Marker::LINE_STRIP ||
           count % 2 == 1))
       {
-        cv::line(image->image, prev_pt, pos_2d, color, width_2d, CV_AA);
+        // Draw line onto an overlay
+        cv::Mat overlay;
+        image->image.copyTo(overlay);
+        cv::line(overlay, prev_pt, pos_2d, color, width_2d, CV_AA);
+
+        // Blend overlay onto image
+        cv::addWeighted(overlay, alpha, image->image, 1 - alpha, 0, image->image);
       }
 
       count++;
@@ -561,9 +585,11 @@ private:
   /// \return Color
   cv::Scalar getColor(const visualization_msgs::Marker marker)
   {
-    return CV_RGB(marker.color.r * 255,
-                  marker.color.g * 255,
-                  marker.color.b * 255);
+    return cv::Scalar(
+      marker.color.b * 255,
+      marker.color.g * 255,
+      marker.color.r * 255,
+      marker.color.a * 255);
   }
 
   /// ROS Node handle
@@ -601,6 +627,9 @@ private:
                                                      visualization_msgs::Marker::SPHERE,
                                                      visualization_msgs::Marker::LINE_LIST,
                                                      visualization_msgs::Marker::LINE_STRIP};
+
+  /// Keep global alpha, -1 means unset so the alpha from markers is used.
+  double alpha_{-1.0};
 };
 
 int main(int argc, char** argv) {
